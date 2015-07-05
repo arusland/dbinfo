@@ -1,6 +1,7 @@
 package io.arusland.dbinfo.sqlserver;
 
 import io.arusland.dbinfo.Column;
+import io.arusland.dbinfo.Constraint;
 import io.arusland.dbinfo.Database;
 import io.arusland.dbinfo.Table;
 import junit.framework.TestCase;
@@ -23,6 +24,10 @@ public class SqlServerDbInfoProviderTest extends TestCase {
                 System.out.println("    " + table);
                 for (Column column : table.getColumns()){
                     System.out.println("        " + column);
+                }
+
+                for (Constraint constraint : table.getConstraints()){
+                    System.out.println("        " + constraint);
                 }
             }
         }

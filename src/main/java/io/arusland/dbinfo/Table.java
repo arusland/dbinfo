@@ -8,5 +8,7 @@ import java.util.List;
 public interface Table extends BaseObject {
     List<Column> getColumns();
 
+    List<Constraint> getConstraints();
+
     String getSchema();
 }

@@ -42,11 +42,6 @@ public class SqlServerColumn implements Column {
     }
 
     @Override
-    public List<Restriction> getRestrictions() {
-        return null;
-    }
-
-    @Override
     public String getName() {
         return name;
     }
