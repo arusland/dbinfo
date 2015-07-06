@@ -2,13 +2,11 @@ package io.arusland.dbinfo.sqlserver;
 
 import io.arusland.dbinfo.Column;
 import io.arusland.dbinfo.ColumnType;
-import io.arusland.dbinfo.Restriction;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
 
 /**
  * Created by ruslan on 05.07.2015.

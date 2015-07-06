@@ -3,7 +3,7 @@ package io.arusland.dbinfo.sqlserver;
 import io.arusland.dbinfo.Column;
 import io.arusland.dbinfo.Constraint;
 import io.arusland.dbinfo.Table;
-import io.arusland.dbinfo.util.ResultSetUtil;
+import io.arusland.dbinfo.util.DbUtil;
 import org.apache.commons.lang3.Validate;
 
 import java.sql.*;
@@ -31,7 +31,8 @@ public class SqlServerTable implements Table {
     private final static String SELECT_CHECK_CONSTRAINTS_QUERY = "SELECT name, type_desc, definition FROM sys.check_constraints " +
             "WHERE parent_object_id = %d";
     private static final String SELECT_FK_CONSTRAINTS_QUERY = "SELECT name, type_desc FROM sys.foreign_keys " +
-            "WHERE parent_object_id = %d";;
+            "WHERE parent_object_id = %d";
+    ;
     private final String url;
     private final String name;
     private final String schema;
@@ -46,7 +47,7 @@ public class SqlServerTable implements Table {
             this.parent = Validate.notNull(parent);
             this.name = Validate.notBlank(rs.getString("name"));
             this.schema = Validate.notBlank(rs.getString("schema_name"));
-            this.createDate = ResultSetUtil.getDate(rs, "create_date");
+            this.createDate = DbUtil.getDate(rs, "create_date");
         } catch (SQLException e) {
             throw new IllegalStateException(e);
         }
@@ -54,7 +55,7 @@ public class SqlServerTable implements Table {
 
     @Override
     public List<Column> getColumns() {
-        if (columns == null){
+        if (columns == null) {
             getTableObjects();
         }
 
@@ -63,7 +64,7 @@ public class SqlServerTable implements Table {
 
     @Override
     public List<Constraint> getConstraints() {
-        if (constraints == null){
+        if (constraints == null) {
             getTableObjects();
         }
 
@@ -71,9 +72,10 @@ public class SqlServerTable implements Table {
     }
 
     private void getTableObjects() {
-        try(Connection con = DriverManager.getConnection(url)) {
+        try (Connection con = DriverManager.getConnection(url)) {
             con.setCatalog(parent.getName());
-            columns = getColumns(con);
+            columns = DbUtil.query(con, new ColumnSupplier(),
+                    String.format(SqlServerColumn.SELECT_COLUMNS_QUERY, name, schema));
             constraints = getConstraints(con);
         } catch (SQLException e) {
             throw new IllegalStateException(e);
@@ -81,44 +83,21 @@ public class SqlServerTable implements Table {
     }
 
     private List<Constraint> getConstraints(Connection con) throws SQLException {
-        List<Constraint> result = new LinkedList<>();
+        final List<Constraint> result = new LinkedList<>();
         Long tableId = getScalarLong(con, "object_id", String.format(SELECT_TABLE_ID, name, schema));
 
         if (tableId != null) {
-            loadDefinableConstraints(con, result, String.format(SELECT_DEFAULT_CONSTRAINTS_QUERY, tableId));
-            loadDefinableConstraints(con, result, String.format(SELECT_CHECK_CONSTRAINTS_QUERY, tableId));
-            loadConstraints(con, result, String.format(SELECT_KEY_CONSTRAINTS_QUERY, tableId));
-            loadConstraints(con, result, String.format(SELECT_FK_CONSTRAINTS_QUERY, tableId));
+            result.addAll(DbUtil.query(con, new ConstraintSupplier(true),
+                    String.format(SELECT_DEFAULT_CONSTRAINTS_QUERY, tableId)));
+            result.addAll(DbUtil.query(con, new ConstraintSupplier(true),
+                    String.format(SELECT_CHECK_CONSTRAINTS_QUERY, tableId)));
+            result.addAll(DbUtil.query(con, new ConstraintSupplier(false),
+                    String.format(SELECT_KEY_CONSTRAINTS_QUERY, tableId)));
+            result.addAll(DbUtil.query(con, new ConstraintSupplier(false),
+                    String.format(SELECT_FK_CONSTRAINTS_QUERY, tableId)));
         }
 
         return result;
-    }
-
-    private void loadConstraints(Connection con, List<Constraint> result, String sql) throws SQLException {
-        Statement stmt = con.createStatement();
-        ResultSet rs = stmt.executeQuery(sql);
-
-        while (rs.next()) {
-            String name = rs.getString("name");
-            String type = rs.getString("type_desc");
-
-            SqlServerConstraint column = new SqlServerConstraint(name, type, null);
-            result.add(column);
-        }
-    }
-
-    private void loadDefinableConstraints(Connection con, List<Constraint> result, String sql) throws SQLException {
-        Statement stmt = con.createStatement();
-        ResultSet rs = stmt.executeQuery(sql);
-
-        while (rs.next()) {
-            String name = rs.getString("name");
-            String type = rs.getString("type_desc");
-            String definition = rs.getString("definition");
-
-            SqlServerConstraint column = new SqlServerConstraint(name, type, definition);
-            result.add(column);
-        }
     }
 
     private Long getScalarLong(Connection con, String name, String sql) throws SQLException {
@@ -132,19 +111,6 @@ public class SqlServerTable implements Table {
         return null;
     }
 
-    private List<Column> getColumns(Connection con) throws SQLException {
-        Statement stmt = con.createStatement();
-        ResultSet rs = stmt.executeQuery(String.format(SqlServerColumn.SELECT_COLUMNS_QUERY, name, schema));
-
-        List<Column> result = new LinkedList<>();
-        while (rs.next()) {
-            SqlServerColumn column = new SqlServerColumn(rs, url, this);
-            result.add(column);
-        }
-
-        return result;
-    }
-
     @Override
     public String getName() {
         return name;
@@ -153,6 +119,32 @@ public class SqlServerTable implements Table {
     @Override
     public String getSchema() {
         return schema;
+    }
+
+    private class ColumnSupplier implements DbUtil.Supplier<Column> {
+        @Override
+        public Column get(ResultSet rs) {
+            return new SqlServerColumn(rs, url, SqlServerTable.this);
+        }
+    }
+
+    private class ConstraintSupplier implements DbUtil.Supplier<Constraint> {
+        private final boolean withDefinition;
+
+        private ConstraintSupplier(boolean withDefinition) {
+            this.withDefinition = withDefinition;
+        }
+
+        @Override
+        public Constraint get(ResultSet rs) {
+            try {
+                final String definition = withDefinition ? rs.getString("definition") : null;
+
+                return new SqlServerConstraint(rs.getString("name"), rs.getString("type_desc"), definition);
+            } catch (SQLException e) {
+                throw new IllegalStateException(e);
+            }
+        }
     }
 
     @Override

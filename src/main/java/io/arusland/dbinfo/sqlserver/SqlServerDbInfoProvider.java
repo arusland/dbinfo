@@ -2,6 +2,7 @@ package io.arusland.dbinfo.sqlserver;
 
 import io.arusland.dbinfo.Database;
 import io.arusland.dbinfo.DbInfoProvider;
+import io.arusland.dbinfo.util.DbUtil;
 import org.apache.commons.lang3.Validate;
 
 import java.sql.*;
@@ -22,7 +23,7 @@ public class SqlServerDbInfoProvider implements DbInfoProvider {
     public List<Database> getDatabases() {
         if (databases == null) {
             try (Connection con = DriverManager.getConnection(url)) {
-                databases = getDatabases(con);
+                databases = DbUtil.query(con, new DatabaseSupplier(), SqlServerDatabase.SELECT_DATABASES_QUERY);
             } catch (SQLException e) {
                 throw new IllegalStateException(e);
             }
@@ -31,15 +32,10 @@ public class SqlServerDbInfoProvider implements DbInfoProvider {
         return databases;
     }
 
-    private List<Database> getDatabases(Connection con) throws SQLException {
-        Statement stmt = con.createStatement();
-        ResultSet rs = stmt.executeQuery(SqlServerDatabase.SELECT_DATABASES_QUERY);
-
-        List<Database> result = new LinkedList<>();
-        while (rs.next()) {
-            SqlServerDatabase db = new SqlServerDatabase(rs, url);
-            result.add(db);
+    private class DatabaseSupplier implements DbUtil.Supplier<Database> {
+        @Override
+        public Database get(ResultSet rs) {
+            return new SqlServerDatabase(rs, url);
         }
-        return result;
     }
 }

@@ -3,12 +3,11 @@ package io.arusland.dbinfo.sqlserver;
 import io.arusland.dbinfo.Database;
 import io.arusland.dbinfo.Procedure;
 import io.arusland.dbinfo.Table;
-import io.arusland.dbinfo.util.ResultSetUtil;
+import io.arusland.dbinfo.util.DbUtil;
 import org.apache.commons.lang3.Validate;
 
 import java.sql.*;
 import java.util.Date;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -24,7 +23,7 @@ public class SqlServerDatabase implements Database {
 
     public SqlServerDatabase(ResultSet rs, String url) {
         try {
-            this.createDate = ResultSetUtil.getDate(rs, "create_date");
+            this.createDate = DbUtil.getDate(rs, "create_date");
             this.name = Validate.notBlank(rs.getString("name"));
             this.url = Validate.notBlank(url);
         } catch (SQLException e) {
@@ -58,40 +57,27 @@ public class SqlServerDatabase implements Database {
     private void loadObjects() {
         try (Connection con = DriverManager.getConnection(url)) {
             con.setCatalog(name);
-            tables = getTables(con);
-            procedures = getProcedures(con);
+            tables = DbUtil.query(con, new TableSupplier(), SqlServerTable.SELECT_TABLES_QUERY);
+            procedures = DbUtil.query(con, new ProcedureSupplier(), SqlServerProcedure.SELECT_PROCEDURES_QUERY);
         } catch (SQLException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    private List<Procedure> getProcedures(Connection con) throws SQLException {
-        Statement stmt = con.createStatement();
-        ResultSet rs = stmt.executeQuery(SqlServerProcedure.SELECT_PROCEDURES_QUERY);
-
-        List<Procedure> result = new LinkedList<>();
-        while (rs.next()) {
-            SqlServerProcedure procedure = new SqlServerProcedure(rs, url, this);
-            result.add(procedure);
+    private class ProcedureSupplier implements DbUtil.Supplier<Procedure>{
+        @Override
+        public Procedure get(ResultSet rs) {
+            return new SqlServerProcedure(rs, url, SqlServerDatabase.this);
         }
-
-        return result;
     }
 
-    private List<Table> getTables(Connection con) throws SQLException {
-        Statement stmt = con.createStatement();
-        ResultSet rs = stmt.executeQuery(SqlServerTable.SELECT_TABLES_QUERY);
-
-        List<Table> result = new LinkedList<>();
-        while (rs.next()) {
-            SqlServerTable table = new SqlServerTable(rs, url, this);
-            result.add(table);
+    private class TableSupplier implements DbUtil.Supplier<Table>{
+        @Override
+        public Table get(ResultSet rs) {
+            return new SqlServerTable(rs, url, SqlServerDatabase.this);
         }
-
-        return result;
     }
 
-    @Override
     public String toString() {
         return "SqlServerDatabase{" +
                 "name='" + name + '\'' +
