@@ -1,6 +1,7 @@
 package io.arusland.dbinfo.sqlserver;
 
 import io.arusland.dbinfo.Database;
+import io.arusland.dbinfo.Function;
 import io.arusland.dbinfo.Procedure;
 import io.arusland.dbinfo.Table;
 import io.arusland.dbinfo.util.DbUtil;
@@ -20,6 +21,7 @@ public class SqlServerDatabase implements Database {
     private final String url;
     private List<Table> tables;
     private List<Procedure> procedures;
+    private List<Function> functions;
 
     public SqlServerDatabase(ResultSet rs, String url) {
         try {
@@ -50,6 +52,15 @@ public class SqlServerDatabase implements Database {
     }
 
     @Override
+    public List<Function> getFunctions() {
+        if (functions == null){
+            loadObjects();
+        }
+
+        return functions;
+    }
+
+    @Override
     public String getName() {
         return name;
     }
@@ -59,6 +70,7 @@ public class SqlServerDatabase implements Database {
             con.setCatalog(name);
             tables = DbUtil.query(con, new TableSupplier(), SqlServerTable.SELECT_TABLES_QUERY);
             procedures = DbUtil.query(con, new ProcedureSupplier(), SqlServerProcedure.SELECT_PROCEDURES_QUERY);
+            functions = DbUtil.query(con, new FunctionSupplier(), SqlServerFunction.SELECT_FUNCTIONS_QUERY);
         } catch (SQLException e) {
             throw new IllegalStateException(e);
         }
@@ -75,6 +87,13 @@ public class SqlServerDatabase implements Database {
         @Override
         public Table get(ResultSet rs) {
             return new SqlServerTable(rs, url, SqlServerDatabase.this);
+        }
+    }
+
+    private class FunctionSupplier implements DbUtil.Supplier<Function>{
+        @Override
+        public Function get(ResultSet rs) {
+            return new SqlServerFunction(rs, url, SqlServerDatabase.this);
         }
     }
 

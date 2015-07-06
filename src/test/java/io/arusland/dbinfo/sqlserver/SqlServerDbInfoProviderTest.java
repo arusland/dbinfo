@@ -32,6 +32,11 @@ public class SqlServerDbInfoProviderTest extends TestCase {
                 System.out.println("    " + proc);
                 //System.out.println("    " + proc.getContent());
             }
+
+            for (Function func : db.getFunctions()){
+                System.out.println("    " + func);
+                //System.out.println("    " + func.getContent());
+            }
         }
     }
 
