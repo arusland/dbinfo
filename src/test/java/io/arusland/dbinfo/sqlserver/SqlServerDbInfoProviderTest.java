@@ -1,9 +1,6 @@
 package io.arusland.dbinfo.sqlserver;
 
-import io.arusland.dbinfo.Column;
-import io.arusland.dbinfo.Constraint;
-import io.arusland.dbinfo.Database;
-import io.arusland.dbinfo.Table;
+import io.arusland.dbinfo.*;
 import junit.framework.TestCase;
 
 import java.util.List;
@@ -29,6 +26,11 @@ public class SqlServerDbInfoProviderTest extends TestCase {
                 for (Constraint constraint : table.getConstraints()){
                     System.out.println("        " + constraint);
                 }
+            }
+
+            for (Procedure proc : db.getProcedures()){
+                System.out.println("    " + proc);
+                //System.out.println("    " + proc.getContent());
             }
         }
     }

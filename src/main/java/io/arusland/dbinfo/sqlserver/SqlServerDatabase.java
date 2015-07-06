@@ -1,6 +1,7 @@
 package io.arusland.dbinfo.sqlserver;
 
 import io.arusland.dbinfo.Database;
+import io.arusland.dbinfo.Procedure;
 import io.arusland.dbinfo.Table;
 import io.arusland.dbinfo.util.ResultSetUtil;
 import org.apache.commons.lang3.Validate;
@@ -19,6 +20,7 @@ public class SqlServerDatabase implements Database {
     private final String name;
     private final String url;
     private List<Table> tables;
+    private List<Procedure> procedures;
 
     public SqlServerDatabase(ResultSet rs, String url) {
         try {
@@ -33,20 +35,47 @@ public class SqlServerDatabase implements Database {
     @Override
     public List<Table> getTables() {
         if (tables == null) {
-            try (Connection con = DriverManager.getConnection(url)) {
-                con.setCatalog(name);
-                tables = getTables(con);
-            } catch (SQLException e) {
-                throw new IllegalStateException(e);
-            }
+            loadObjects();
         }
 
         return tables;
     }
 
     @Override
+    public List<Procedure> getProcedures() {
+        if (procedures == null){
+            loadObjects();
+        }
+
+        return procedures;
+    }
+
+    @Override
     public String getName() {
         return name;
+    }
+
+    private void loadObjects() {
+        try (Connection con = DriverManager.getConnection(url)) {
+            con.setCatalog(name);
+            tables = getTables(con);
+            procedures = getProcedures(con);
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private List<Procedure> getProcedures(Connection con) throws SQLException {
+        Statement stmt = con.createStatement();
+        ResultSet rs = stmt.executeQuery(SqlServerProcedure.SELECT_PROCEDURES_QUERY);
+
+        List<Procedure> result = new LinkedList<>();
+        while (rs.next()) {
+            SqlServerProcedure procedure = new SqlServerProcedure(rs, url, this);
+            result.add(procedure);
+        }
+
+        return result;
     }
 
     private List<Table> getTables(Connection con) throws SQLException {

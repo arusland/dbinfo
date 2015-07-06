@@ -7,4 +7,6 @@ import java.util.List;
  */
 public interface Database extends BaseObject {
     List<Table> getTables();
+
+    List<Procedure> getProcedures();
 }
