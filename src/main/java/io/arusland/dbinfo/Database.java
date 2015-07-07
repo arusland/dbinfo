@@ -12,4 +12,6 @@ public interface Database extends BaseObject {
     List<Procedure> getProcedures();
 
     List<Function> getFunctions();
+
+    List<View> getViews();
 }

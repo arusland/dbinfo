@@ -1,9 +1,6 @@
 package io.arusland.dbinfo.sqlserver;
 
-import io.arusland.dbinfo.Database;
-import io.arusland.dbinfo.Function;
-import io.arusland.dbinfo.Procedure;
-import io.arusland.dbinfo.Table;
+import io.arusland.dbinfo.*;
 import io.arusland.dbinfo.util.DbUtil;
 import org.apache.commons.lang3.Validate;
 
@@ -22,6 +19,7 @@ public class SqlServerDatabase implements Database {
     private List<Table> tables;
     private List<Procedure> procedures;
     private List<Function> functions;
+    private List<View> views;
 
     public SqlServerDatabase(ResultSet rs, String url) {
         try {
@@ -61,6 +59,11 @@ public class SqlServerDatabase implements Database {
     }
 
     @Override
+    public List<View> getViews() {
+        return views;
+    }
+
+    @Override
     public String getName() {
         return name;
     }
@@ -71,6 +74,7 @@ public class SqlServerDatabase implements Database {
             tables = DbUtil.query(con, new TableSupplier(), SqlServerTable.SELECT_TABLES_QUERY);
             procedures = DbUtil.query(con, new ProcedureSupplier(), SqlServerProcedure.SELECT_PROCEDURES_QUERY);
             functions = DbUtil.query(con, new FunctionSupplier(), SqlServerFunction.SELECT_FUNCTIONS_QUERY);
+            views = DbUtil.query(con, new ViewSupplier(), SqlServerView.SELECT_VIEWS_QUERY);
         } catch (SQLException e) {
             throw new IllegalStateException(e);
         }
@@ -94,6 +98,13 @@ public class SqlServerDatabase implements Database {
         @Override
         public Function get(ResultSet rs) {
             return new SqlServerFunction(rs, url, SqlServerDatabase.this);
+        }
+    }
+
+    private class ViewSupplier implements DbUtil.Supplier<View>{
+        @Override
+        public View get(ResultSet rs) {
+            return new SqlServerView(rs, url, SqlServerDatabase.this);
         }
     }
 

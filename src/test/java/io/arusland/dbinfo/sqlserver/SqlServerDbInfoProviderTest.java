@@ -37,6 +37,11 @@ public class SqlServerDbInfoProviderTest extends TestCase {
                 System.out.println("    " + func);
                 //System.out.println("    " + func.getContent());
             }
+
+            for (View view : db.getViews()){
+                System.out.println("    " + view);
+             //   System.out.println("    " + view.getContent());
+            }
         }
     }
 
